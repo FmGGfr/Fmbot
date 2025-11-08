@@ -1,14 +1,14 @@
 {
   "name": "fmbot",
   "version": "1.0.0",
-  "description": "Bot Discord musique (Lavalink + Discord.js v14)",
+  "description": "Discord music bot using Poru and Lavalink 4",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",
-    "shoukaku": "^4.0.2",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "poru": "^4.4.1"
   }
 }
