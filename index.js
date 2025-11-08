@@ -2,7 +2,6 @@ require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const { Manager } = require("erela.js");
 
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -12,15 +11,13 @@ const client = new Client({
   ]
 });
 
-const prefix = process.env.BOT_PREFIX || "$";
-
+// Configuration Lavalink
 client.manager = new Manager({
-  plugins: [],
   nodes: [
     {
-      host: process.env.LAVALINK_HOST,
-      port: Number(process.env.LAVALINK_PORT),
-      password: process.env.LAVALINK_PASSWORD,
+      host: "10.0.20.5",
+      port: 2333,
+      password: "youshallnotpass",
       secure: false
     }
   ],
@@ -30,62 +27,71 @@ client.manager = new Manager({
   }
 });
 
+// Événements Lavalink
+client.manager.on("nodeConnect", node =>
+  console.log(`✅ Connecté à Lavalink ${node.options.host}:${node.options.port}`)
+);
+
+client.manager.on("nodeError", (node, error) =>
+  console.log(`❌ Erreur Lavalink ${node.options.host}:${node.options.port} → ${error.message}`)
+);
+
+// Événements Discord
 client.once("ready", () => {
-  console.log(`Bot connecté en tant que ${client.user.tag}`);
+  console.log(`🤖 Bot connecté en tant que ${client.user.tag}`);
   client.manager.init(client.user.id);
 });
 
-client.on("raw", (d) => client.manager.updateVoiceState(d));
+client.on("raw", d => client.manager.updateVoiceState(d));
 
-client.on("messageCreate", async (message) => {
-  if (!message.content.startsWith(prefix) || message.author.bot) return;
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
+// Commande basique $play
+client.on("messageCreate", async message => {
+  if (message.author.bot || !message.content.startsWith("$")) return;
+  const args = message.content.slice(1).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
   if (command === "play") {
-    const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) return message.reply("Rejoins un salon vocal.");
+    const channel = message.member.voice.channel;
+    if (!channel)
+      return message.reply("❗ Tu dois être dans un salon vocal.");
+
+    const player = client.manager.create({
+      guild: message.guild.id,
+      voiceChannel: channel.id,
+      textChannel: message.channel.id,
+      selfDeafen: true
+    });
+
+    if (player.state !== "CONNECTED") player.connect();
 
     const search = args.join(" ");
-    if (!search) return message.reply("Indique le nom ou l’URL d’une musique.");
-
-    let player = client.manager.players.get(message.guild.id);
-    if (!player) {
-      player = client.manager.create({
-        guild: message.guild.id,
-        voiceChannel: voiceChannel.id,
-        textChannel: message.channel.id
-      });
-      player.connect();
-    }
+    if (!search) return message.reply("⚠️ Donne un lien ou un nom de musique.");
 
     const res = await client.manager.search(search, message.author);
-    if (res.loadType === "NO_MATCHES") return message.reply("Aucune musique trouvée.");
-    if (res.loadType === "PLAYLIST_LOADED") {
-      for (const track of res.tracks) player.queue.add(track);
-      message.reply(`✅ Playlist ajoutée : ${res.playlist.name}`);
-    } else {
-      const track = res.tracks[0];
-      player.queue.add(track);
-      message.reply(`🎵 Ajouté : **${track.title}**`);
-    }
+    if (res.loadType === "LOAD_FAILED" || !res.tracks.length)
+      return message.reply("❌ Aucun résultat trouvé.");
 
-    if (!player.playing && !player.paused && !player.queue.size) player.play();
+    player.queue.add(res.tracks[0]);
+    message.reply(`🎶 Ajouté à la file : **${res.tracks[0].title}**`);
+
+    if (!player.playing && !player.paused && !player.queue.size)
+      player.play();
   }
 
   if (command === "skip") {
     const player = client.manager.players.get(message.guild.id);
-    if (!player) return message.reply("Aucune musique en cours.");
+    if (!player) return message.reply("❌ Aucun lecteur actif.");
     player.stop();
-    message.reply("⏭️ Musique suivante.");
+    message.reply("⏭️ Morceau passé.");
   }
 
   if (command === "stop") {
     const player = client.manager.players.get(message.guild.id);
-    if (!player) return message.reply("Aucune musique en cours.");
+    if (!player) return message.reply("❌ Aucun lecteur actif.");
     player.destroy();
     message.reply("🛑 Lecture arrêtée.");
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// Lancement du bot
+client.login(process.env.DISCORD_TOKEN || "TON_TOKEN_ICI");
