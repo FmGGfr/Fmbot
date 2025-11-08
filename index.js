@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
-const { Manager } = require("erela.js");
+const { Shoukaku, Connectors } = require("shoukaku");
 
 const client = new Client({
   intents: [
@@ -11,87 +11,70 @@ const client = new Client({
   ]
 });
 
-// Configuration Lavalink
-client.manager = new Manager({
-  nodes: [
-    {
-      host: "10.0.20.5",
-      port: 2333,
-      password: "youshallnotpass",
-      secure: false
-    }
-  ],
-  send: (id, payload) => {
-    const guild = client.guilds.cache.get(id);
-    if (guild) guild.shard.send(payload);
+// === Lavalink via Shoukaku ===
+const shoukaku = new Shoukaku(new Connectors.DiscordJS(client), [
+  {
+    name: "Local",
+    url: "127.0.0.1:2333",
+    auth: "youshallnotpass"
   }
-});
+]);
 
-// Événements Lavalink
-client.manager.on("nodeConnect", node =>
-  console.log(`✅ Connecté à Lavalink ${node.options.host}:${node.options.port}`)
-);
+// Logs Lavalink
+shoukaku.on("ready", (name) => console.log(`✅ Lavalink node "${name}" prêt`));
+shoukaku.on("error", (name, err) => console.error(`❌ Node ${name} erreur: ${err.message}`));
+shoukaku.on("close", (name, code, reason) => console.log(`🔌 Node ${name} fermé: ${code} ${reason || "Aucune raison"}`));
 
-client.manager.on("nodeError", (node, error) =>
-  console.log(`❌ Erreur Lavalink ${node.options.host}:${node.options.port} → ${error.message}`)
-);
-
-// Événements Discord
 client.once("ready", () => {
-  console.log(`🤖 Bot connecté en tant que ${client.user.tag}`);
-  client.manager.init(client.user.id);
+  console.log(`🤖 Connecté à Discord en tant que ${client.user.tag}`);
 });
 
-client.on("raw", d => client.manager.updateVoiceState(d));
+// === Commande simple $play / $skip / $stop ===
+client.on("messageCreate", async (msg) => {
+  if (msg.author.bot || !msg.content.startsWith("$")) return;
 
-// Commande basique $play
-client.on("messageCreate", async message => {
-  if (message.author.bot || !message.content.startsWith("$")) return;
-  const args = message.content.slice(1).trim().split(/ +/);
+  const args = msg.content.slice(1).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
   if (command === "play") {
-    const channel = message.member.voice.channel;
-    if (!channel)
-      return message.reply("❗ Tu dois être dans un salon vocal.");
+    const voice = msg.member?.voice?.channel;
+    if (!voice) return msg.reply("❗ Rejoins un salon vocal d’abord.");
 
-    const player = client.manager.create({
-      guild: message.guild.id,
-      voiceChannel: channel.id,
-      textChannel: message.channel.id,
-      selfDeafen: true
+    const node = shoukaku.getNode();
+    const connection = await node.joinChannel({
+      guildId: msg.guild.id,
+      channelId: voice.id,
+      shardId: 0,
+      deaf: true
     });
 
-    if (player.state !== "CONNECTED") player.connect();
+    const query = args.join(" ");
+    if (!query) return msg.reply("⚠️ Donne un lien ou un nom de musique.");
 
-    const search = args.join(" ");
-    if (!search) return message.reply("⚠️ Donne un lien ou un nom de musique.");
+    const result = await node.rest.resolve(query);
+    if (!result?.tracks?.length) return msg.reply("❌ Aucun résultat trouvé.");
 
-    const res = await client.manager.search(search, message.author);
-    if (res.loadType === "LOAD_FAILED" || !res.tracks.length)
-      return message.reply("❌ Aucun résultat trouvé.");
-
-    player.queue.add(res.tracks[0]);
-    message.reply(`🎶 Ajouté à la file : **${res.tracks[0].title}**`);
-
-    if (!player.playing && !player.paused && !player.queue.size)
-      player.play();
+    const track = result.tracks[0];
+    await connection.playTrack({ track: track.encoded });
+    msg.reply(`🎶 Lecture : **${track.info.title}**`);
   }
 
   if (command === "skip") {
-    const player = client.manager.players.get(message.guild.id);
-    if (!player) return message.reply("❌ Aucun lecteur actif.");
-    player.stop();
-    message.reply("⏭️ Morceau passé.");
+    const node = shoukaku.getNode();
+    const conn = node.players.get(msg.guild.id);
+    if (!conn) return msg.reply("❌ Aucun titre en cours.");
+    conn.stopTrack();
+    msg.reply("⏭️ Morceau passé.");
   }
 
   if (command === "stop") {
-    const player = client.manager.players.get(message.guild.id);
-    if (!player) return message.reply("❌ Aucun lecteur actif.");
-    player.destroy();
-    message.reply("🛑 Lecture arrêtée.");
+    const node = shoukaku.getNode();
+    const conn = node.players.get(msg.guild.id);
+    if (!conn) return msg.reply("❌ Aucun lecteur actif.");
+    conn.disconnect();
+    msg.reply("🛑 Lecture arrêtée.");
   }
 });
 
-// Lancement du bot
+// === Connexion Discord ===
 client.login(process.env.DISCORD_TOKEN || "TON_TOKEN_ICI");
