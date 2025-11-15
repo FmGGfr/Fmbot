@@ -10,7 +10,7 @@
                 "curl -L \"https://github.com/FmGGfr/PufferPanel_Template_FmGG/archive/refs/heads/main.zip\" -o source.zip",
                 "unzip -o source.zip -d src",
                 "rm source.zip",
-                "FOLDER=$(ls src) && mv src/$FOLDER/Fmbot.py/* . && rm -rf src",
+                "FOLDER=$(ls src) && mv src/$FOLDER/Fmbot/* . && rm -rf src",
                 "python3 -m venv venv",
                 "./venv/bin/pip install --upgrade pip",
                 "./venv/bin/pip install -r requirements.txt"
@@ -19,11 +19,9 @@
     ],
 
     "run": {
-        "command": "./venv/bin/python ${bot-py-file}",
+        "command": "./venv/bin/python bot.py",
         "stopCode": 9,
-        "stdin": {
-            "type": "stdin"
-        }
+        "stdin": { "type": "stdin" }
     },
 
     "data": {
@@ -37,9 +35,7 @@
         }
     },
 
-    "environment": {
-        "type": "host"
-    },
+    "environment": { "type": "host" },
 
     "supportedEnvironments": [
         { "type": "host" },
