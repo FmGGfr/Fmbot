@@ -1,51 +1,63 @@
 {
     "type": "discord",
     "display": "discord.py Bot",
-    "name": "discord-py-bot",
-
     "data": {
         "bot-py-file": {
             "type": "string",
             "value": "bot.py",
             "display": "Main bot file",
-            "desc": "Python file to start the bot.",
+            "desc": "The main bot file.",
             "required": true,
             "userEdit": true
         }
     },
-
     "install": [
         {
             "type": "command",
             "commands": [
-                "git clone https://github.com/Rapptz/discord.py.git src",
-                "cp -R src/. .",
-                "rm -rf src",
                 "python3 -m venv venv",
                 "./venv/bin/pip install --upgrade pip",
                 "./venv/bin/pip install -r requirements.txt"
             ]
         }
     ],
-
+    "uninstall": null,
     "run": {
         "command": "./venv/bin/python ${bot-py-file}",
         "stopCode": 9,
         "stdin": {
             "type": "stdin"
-        }
+        },
+        "autostart": false,
+        "autorecover": false,
+        "autorestart": false
     },
-
     "environment": {
         "type": "host"
     },
-
     "supportedEnvironments": [
-        { "type": "host" },
-        { "type": "docker", "image": "python" }
+        {
+            "type": "host"
+        },
+        {
+            "type": "docker",
+            "image": "python"
+        }
     ],
-
     "requirements": {
-        "binaries": ["python3", "git"]
-    }
+        "binaries": [
+            "python3"
+        ]
+    },
+    "stats": {
+        "type": ""
+    },
+    "query": {
+        "type": ""
+    },
+    "keepAlive": {
+        "frequency": "",
+        "command": ""
+    },
+    "name": "discord-py"
 }
