@@ -31,7 +31,7 @@ Pour requirements.txt :
 discord.py==2.3.2
 ```
 
-## 🇫🇷 Instructions in English
+## 🇬🇧 Instructions in English
 
 This project requires two files to run:
 `bot.py` and `requirements.txt`.
@@ -50,9 +50,9 @@ client = discord.Client(intents=discord.Intents.default())
 
 @client.event
 async def on_ready():
-    print(f"Connecté en tant que {client.user}")
+    print(f"Logged in as {client.user}")
 
-client.run("TON_TOKEN_ICI")
+client.run("YOUR_TOKEN_HERE")
 ```
 for requirements.txt :
 ```
